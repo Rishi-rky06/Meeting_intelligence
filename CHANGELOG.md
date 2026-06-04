@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.1.0] — 2026-06-05
+
+### AI provider
+- Migrated the LLM integration to **Groq** (`llama-3.3-70b-versatile`) via the OpenAI-compatible SDK.
+  The provider is now fully env-driven (`GROQ_API_KEY` / `GROQ_MODEL` / `GROQ_BASE_URL`), so switching
+  providers is a config change, not a code change. (Earlier iterations used Claude, then OpenRouter;
+  Groq was chosen for its fast, generous free tier — see DECISIONS.md.)
+
+### API & docs
+- Added **CORS** support (`django-cors-headers`, all origins) per the deployment requirement.
+- Added `@extend_schema` annotations so every endpoint shows its request/response body in Swagger.
+- Registered the JWT **Bearer security scheme** so Swagger's "Authorize" button works.
+- Cleaned up auto-generated enum names (`ActionItemStatusEnum`, `AnalysisStatusEnum`) — schema now
+  generates with **0 errors, 0 warnings**.
+
+### AI quality
+- Prompt now instructs the model to copy transcript timestamps **exactly** (no reformatting), so
+  citations line up precisely with the transcript.
+- Trimmed the analysis response to the clean `summary / actionItems / decisions / followUpSuggestions`
+  shape (removed a redundant internal `items` array).
+
+### Deployment
+- Added `python manage.py send_reminders` management command to trigger the reminder job on demand.
+- Upgraded `render.yaml` to a full **Blueprint**: free PostgreSQL + web service, auto-injected DB
+  credentials, and a health check.
+- **Deployed live to Render**: https://meeting-intelligence-nj4u.onrender.com
+
 ## [1.0.0] — 2026-06-03
 
 ### Phase 1: Project Setup

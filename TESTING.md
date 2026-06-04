@@ -50,7 +50,7 @@ Tests use an in-memory SQLite database and mock the Groq/LLM API — no external
 | `test_list_meetings_returns_only_own` | Only authenticated user's meetings returned |
 | `test_list_meetings_pagination` | Pagination metadata present |
 
-### Action Items (17 tests)
+### Action Items (18 tests)
 
 | Test | Scenario |
 |------|----------|
@@ -73,7 +73,7 @@ Tests use an in-memory SQLite database and mock the Groq/LLM API — no external
 | `test_future_due_date_not_overdue` | Future due_date excluded from /overdue |
 | `test_is_overdue_property` | `is_overdue` model property works correctly |
 
-### AI Analysis (13 tests)
+### AI Analysis (12 tests)
 
 | Test | Scenario |
 |------|----------|

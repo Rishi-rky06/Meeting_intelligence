@@ -1,5 +1,37 @@
 # Technical Decisions
 
+## Database Schema
+
+The data model has 8 tables. Relationships:
+
+```
+User (1) ───< (many) Meeting ───< (many) TranscriptSegment
+                        │
+                        ├──── (1:1) MeetingAnalysis ───< (many) AnalysisItem ───< (many) Citation
+                        │
+                        └───< (many) ActionItem ───< (many) ReminderLog
+```
+
+| Model | Key fields | Purpose |
+|-------|-----------|---------|
+| **User** | `id` (UUID PK), `email` (unique), `name`, `password` (hash), `is_active`, `created_at` | Application user; email is the login identifier |
+| **Meeting** | `id` (UUID PK), `title`, `participants` (JSON list of emails), `meeting_date`, `created_by` (FK→User), `created_at` | A meeting and its metadata |
+| **TranscriptSegment** | `id`, `meeting` (FK), `timestamp`, `speaker`, `text`, `order` | One line of the transcript |
+| **MeetingAnalysis** | `id`, `meeting` (1:1), `status` (PENDING/COMPLETED/FAILED), `raw_response` (JSON), `analyzed_at` | One AI analysis run per meeting |
+| **AnalysisItem** | `id`, `analysis` (FK), `item_type` (SUMMARY/ACTION_ITEM/DECISION/FOLLOWUP), `content`, `assignee` | A single generated insight |
+| **Citation** | `id`, `analysis_item` (FK), `timestamp`, `speaker`, `text_excerpt` | Transcript evidence backing an insight |
+| **ActionItem** | `id` (UUID PK), `meeting` (FK, nullable), `task`, `assignee` (email), `due_date`, `status` (PENDING/IN_PROGRESS/COMPLETED), `citations` (JSON), `created_at` | A trackable task |
+| **ReminderLog** | `id`, `action_item` (FK), `sent_at`, `channel`, `status` (SUCCESS/FAILED), `error_message` | Audit record of each reminder sent |
+
+**Design notes:**
+- **UUID primary keys** on user-facing entities (User, Meeting, ActionItem) so IDs aren't guessable/enumerable in the API.
+- **`participants` and `citations` use `JSONField`** — they're simple lists read/written as a unit, so a separate table would add joins with no benefit.
+- **`MeetingAnalysis` is `OneToOne` with `Meeting`** — re-analyzing replaces the previous result rather than accumulating.
+- **`AnalysisItem` → `Citation`** is a normalized relation (not JSON) because citations are queried and displayed per insight.
+- **`ActionItem.meeting` is nullable** — action items can be created manually without a meeting.
+
+---
+
 ## 1. Database: PostgreSQL
 
 **Chosen:** PostgreSQL via `psycopg2-binary`

@@ -2,6 +2,30 @@
 
 An AI-powered backend service that helps teams capture insights, action items, decisions, and follow-ups from meeting transcripts.
 
+Give it a meeting transcript and it uses an LLM to produce a **summary, action items, decisions, and follow-ups** — where **every insight is backed by a citation** pointing to the exact line in the transcript it came from. Action items are tracked, overdue ones are detected automatically, and a background job emails reminders.
+
+## Live Demo
+
+| Resource | URL |
+|----------|-----|
+| Live API | https://meeting-intelligence-nj4u.onrender.com |
+| Swagger / API docs | https://meeting-intelligence-nj4u.onrender.com/api/docs/ |
+| Health check | https://meeting-intelligence-nj4u.onrender.com/health |
+| Evaluation info | https://meeting-intelligence-nj4u.onrender.com/api/evaluation |
+
+> Note: the API is hosted on Render's free tier, which sleeps after ~15 min of inactivity. The **first request may take 30–50 seconds** to wake the service; it's fast after that.
+
+## Features
+
+- **Custom JWT authentication** — register, login, refresh, logout (built with PyJWT, no auth libraries)
+- **Meeting management** — store meetings with full transcripts (pagination + owner scoping)
+- **AI meeting analysis** — summary, action items, decisions, follow-ups, each with transcript **citations**
+- **Hallucination prevention** — strict grounding prompt + post-processing that drops any uncited insight
+- **Action item tracking** — create, update status (PENDING → IN_PROGRESS → COMPLETED), filter
+- **Overdue detection** — flags items past their due date that aren't completed
+- **Scheduled reminders** — background job (APScheduler) emails overdue assignees via Resend
+- **Production basics** — unified response envelope, request trace IDs, structured logging, global error handling, input validation, CORS, Swagger docs
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -18,6 +42,33 @@ An AI-powered backend service that helps teams capture insights, action items, d
 
 ---
 
+## Project Structure
+
+The project uses a **feature-based layout** — each domain is a self-contained Django app holding its own models, views, serializers, urls, and tests.
+
+```
+meeting_intelligence/
+├── config/              # Project config
+│   ├── settings/        # Split settings: base / development / production / testing
+│   ├── urls.py          # Root URL routing
+│   └── wsgi.py
+├── core/                # Shared infrastructure used by all apps
+│   ├── middleware.py    # Trace ID middleware
+│   ├── response.py      # Unified success/error response helpers
+│   ├── exceptions.py    # Global exception handler
+│   ├── pagination.py    # Paginated response wrapper
+│   ├── permissions.py   # JWT permission class
+│   └── validators.py    # Reusable validators
+└── apps/                # One app per feature
+    ├── authentication/  # Custom User + JWT (register/login/refresh/logout)
+    ├── meetings/        # Meeting + transcript storage
+    ├── analysis/        # AI analysis (Groq) + citations  (services/ holds prompt + LLM logic)
+    ├── action_items/    # Action items, status tracking, overdue detection
+    └── reminders/       # APScheduler job + Resend email integration
+```
+
+---
+
 ## Local Setup
 
 ### Prerequisites
@@ -28,8 +79,8 @@ An AI-powered backend service that helps teams capture insights, action items, d
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/meeting-intelligence.git
-cd meeting-intelligence
+git clone https://github.com/Rishi-rky06/Meeting_intelligence.git
+cd Meeting_intelligence
 ```
 
 ### 2. Create and activate a virtual environment
@@ -84,6 +135,16 @@ DJANGO_SETTINGS_MODULE=config.settings.testing python manage.py test apps.authen
 
 Tests use an in-memory SQLite database — no PostgreSQL required for testing.
 
+### Triggering reminders manually
+
+The reminder job normally runs every 30 minutes on a schedule. To trigger it **immediately** (e.g. to test the email flow), run:
+
+```bash
+python manage.py send_reminders
+```
+
+This finds all overdue action items, emails their assignees via Resend, and records each attempt in the `ReminderLog` table.
+
 ---
 
 ## Environment Variables
@@ -104,7 +165,7 @@ Tests use an in-memory SQLite database — no PostgreSQL required for testing.
 | `RESEND_API_KEY` | Yes | Resend API key for emails | `re_...` |
 | `RESEND_FROM_EMAIL` | Yes | Sender email address | `reminders@yourdomain.com` |
 | `SCHEDULER_INTERVAL_MINUTES` | No | Reminder job frequency | `30` |
-| `CANDIDATE_NAME` | No | Your name for /api/evaluation | `Koushik Reddy Yeredla` |
+| `CANDIDATE_NAME` | No | Your name for /api/evaluation | `Sheela Rishikesh Yadav` |
 | `CANDIDATE_EMAIL` | No | Your email for /api/evaluation | `you@example.com` |
 | `REPOSITORY_URL` | No | GitHub repo URL | `https://github.com/...` |
 | `DEPLOYED_URL` | No | Render deployment URL | `https://...onrender.com` |
@@ -182,21 +243,20 @@ curl -X PATCH http://localhost:8000/api/action-items/<item_id>/status \
 
 ## Deployment to Render
 
-1. Push your code to GitHub (make sure `.env` is in `.gitignore`)
-2. Create a new **Web Service** on Render pointing to your repo
-3. Set environment variables in the Render dashboard
-4. Add a **PostgreSQL** database on Render and set the DB connection variables
-5. Render auto-deploys on every push to `main`
+This repo includes a **Render Blueprint** ([`render.yaml`](render.yaml)) that provisions everything automatically — the web service **and** a free PostgreSQL database, with the database connection variables auto-injected.
 
-Build command:
-```
-pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
-```
+1. Push your code to GitHub (`.env` is gitignored, so secrets stay local).
+2. On Render: **New → Blueprint**, and select this repository.
+3. Render reads `render.yaml` and creates the web service + database.
+4. When prompted, enter the two secret values (`GROQ_API_KEY`, `RESEND_API_KEY`) — everything else is set automatically.
+5. Render builds and deploys; future pushes to `main` auto-deploy.
 
-Start command:
-```
-gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
-```
+Under the hood the Blueprint runs:
+
+- **Build:** `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+- **Start:** `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
+
+Production settings (`config/settings/production.py`) enable SSL, require a database SSL connection, and serve static files via WhiteNoise.
 
 ---
 
