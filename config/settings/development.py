@@ -19,5 +19,3 @@ DATABASES = {
         'PORT': config('DB_PORT', default='5432'),
     }
 }
-
-CORS_ALLOW_ALL_ORIGINS = True

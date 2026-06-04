@@ -16,6 +16,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
+    'corsheaders',
     'apps.authentication',
     'apps.meetings',
     'apps.analysis',
@@ -24,12 +25,16 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'core.middleware.TraceIDMiddleware',
     'django.middleware.common.CommonMiddleware',
     'apps.authentication.middleware.JWTAuthMiddleware',
 ]
+
+# CORS — allow all origins (assignment requirement: CORS enabled *)
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'config.urls'
 
