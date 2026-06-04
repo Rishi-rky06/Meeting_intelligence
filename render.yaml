@@ -72,7 +72,7 @@ services:
       - key: REPOSITORY_URL
         value: https://github.com/Rishi-rky06/Meeting_intelligence
       - key: DEPLOYED_URL
-        sync: false
+        value: https://meeting-intelligence-nj4u.onrender.com
 
       # Allow all hosts (set to your onrender.com domain to tighten later)
       - key: ALLOWED_HOSTS
