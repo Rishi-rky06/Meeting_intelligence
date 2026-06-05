@@ -6,6 +6,7 @@ from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
+    path('', include('core.root_urls')),
     path('health', include('core.health_urls')),
     path('api/auth/', include('apps.authentication.urls')),
     path('api/meetings/', include('apps.meetings.urls')),
